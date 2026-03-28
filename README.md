@@ -37,11 +37,47 @@ It consists of three services:
 
 ---
 
+## 🧭 Architecture Diagram
+
+```text
++------------------+
+|   Software User  |
++------------------+
+         |
+         | HTTP POST /api/orders
+         v
++------------------+
+|   order-service  |
+|------------------|
+| - REST API       |
+| - H2 persistence |
+| - Kafka producer |
++------------------+
+         |
+         | publishes OrderCreatedEvent
+         v
++------------------------+
+|   Kafka                |
+|   topic:               |
+|   order-created-topic  |
++------------------------+
+        / \
+       /   \
+      v     v
++----------------------+   +----------------------+
+| inventory-service    |   | payment-service      |
+|----------------------|   |----------------------|
+| - Kafka consumer     |   | - Kafka consumer     |
+| - reserve inventory  |   | - process payment    |
++----------------------+   +----------------------+
+```
+
+
 ## 🏗️ Architecture Flow
 
-### 1. Client sends request to:
+### 1. Client sends:
 ```
-POST /api/orders
+1. HTTP request to Order Service
 ```
 
 ### 2. `order-service`:
