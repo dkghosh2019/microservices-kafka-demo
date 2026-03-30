@@ -1,7 +1,7 @@
 package com.dkghosh.orderservice.service;
 
 import com.dkghosh.orderservice.config.KafkaTopicConfig;
-import com.dkghosh.orderservice.dto.CreateOrderRequest;
+import com.dkghosh.orderservice.dto.OrderRequest;
 import com.dkghosh.orderservice.dto.OrderResponse;
 import com.dkghosh.orderservice.entity.OrderEntity;
 import com.dkghosh.orderservice.entity.OrderStatus;
@@ -31,7 +31,7 @@ public class OrderService {
     }
 
     @Transactional
-    public OrderResponse createOrder(CreateOrderRequest request) {
+    public OrderResponse createOrder(OrderRequest request) {
         OrderEntity order = new OrderEntity();
         order.setProductCode(request.productCode());
         order.setQuantity(request.quantity());
