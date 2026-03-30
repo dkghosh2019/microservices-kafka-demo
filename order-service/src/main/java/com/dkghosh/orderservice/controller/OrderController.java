@@ -1,6 +1,6 @@
 package com.dkghosh.orderservice.controller;
 
-import com.dkghosh.orderservice.dto.CreateOrderRequest;
+import com.dkghosh.orderservice.dto.OrderRequest;
 import com.dkghosh.orderservice.dto.OrderResponse;
 import com.dkghosh.orderservice.service.OrderService;
 import jakarta.validation.Valid;
@@ -21,7 +21,7 @@ public class OrderController {
 
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
-    public OrderResponse createOrder(@Valid @RequestBody CreateOrderRequest request) {
+    public OrderResponse createOrder(@Valid @RequestBody OrderRequest request) {
         return orderService.createOrder(request);
     }
 

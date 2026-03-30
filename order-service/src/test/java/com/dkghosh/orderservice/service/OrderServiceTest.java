@@ -1,10 +1,12 @@
 package com.dkghosh.orderservice.service;
 
-import com.dkghosh.orderservice.dto.CreateOrderRequest;
+import com.dkghosh.orderservice.config.KafkaTopicConfig;
+import com.dkghosh.orderservice.dto.OrderRequest;
 import com.dkghosh.orderservice.dto.OrderResponse;
 import com.dkghosh.orderservice.entity.OrderEntity;
 import com.dkghosh.orderservice.entity.OrderStatus;
 import com.dkghosh.orderservice.event.OrderCreatedEvent;
+import com.dkghosh.orderservice.exception.OrderNotFoundException;
 import com.dkghosh.orderservice.repository.OrderRepository;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -15,11 +17,13 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.kafka.core.KafkaTemplate;
 
 import java.math.BigDecimal;
+import java.util.List;
+import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
@@ -36,7 +40,7 @@ class OrderServiceTest {
 
     @Test
     void createOrder_shouldSaveOrderCalculateTotalAndPublishEvent() {
-        CreateOrderRequest request = new CreateOrderRequest(
+        OrderRequest request = new OrderRequest(
                 "BOOK-123",
                 2,
                 new BigDecimal("49.99"),
@@ -68,7 +72,7 @@ class OrderServiceTest {
         ArgumentCaptor<OrderCreatedEvent> eventCaptor = ArgumentCaptor.forClass(OrderCreatedEvent.class);
 
         verify(kafkaTemplate, times(1)).send(
-                eq("order-created-topic"),
+                eq(KafkaTopicConfig.ORDER_CREATED_TOPIC),
                 eq("1"),
                 eventCaptor.capture()
         );
@@ -97,5 +101,82 @@ class OrderServiceTest {
 
 
 
+    }
+
+    @Test
+    void getOrder_shouldReturnMappedOrder() {
+        OrderEntity entity = new OrderEntity();
+        entity.setId(10L);
+        entity.setCustomerId("C-1");
+        entity.setProductCode("P-1");
+        entity.setQuantity(3);
+        entity.setUnitPrice(new BigDecimal("15.50"));
+        entity.setTotalAmount(new BigDecimal("46.50"));
+        entity.setStatus(OrderStatus.CREATED);
+
+        when(orderRepository.findById(10L)).thenReturn(Optional.of(entity));
+
+        OrderResponse response = orderService.getOrder(10L);
+
+        assertNotNull(response);
+        assertEquals(10L, response.orderId());
+        assertEquals("P-1", response.productCode());
+        assertEquals(3, response.quantity());
+        assertEquals(new BigDecimal("15.50"), response.unitPrice());
+        assertEquals(new BigDecimal("46.50"), response.totalAmount());
+        assertEquals("C-1", response.customerId());
+        assertEquals("CREATED", response.status());
+    }
+
+    @Test
+    void getOrder_shouldThrowWhenMissing() {
+        when(orderRepository.findById(99L)).thenReturn(Optional.empty());
+
+        assertThrows(OrderNotFoundException.class, () -> orderService.getOrder(99L));
+    }
+
+    @Test
+    void getAllOrders_shouldReturnMappedOrders() {
+        OrderEntity first = new OrderEntity();
+        first.setId(1L);
+        first.setCustomerId("C-1");
+        first.setProductCode("P-1");
+        first.setQuantity(1);
+        first.setUnitPrice(new BigDecimal("10.00"));
+        first.setTotalAmount(new BigDecimal("10.00"));
+        first.setStatus(OrderStatus.CREATED);
+
+        OrderEntity second = new OrderEntity();
+        second.setId(2L);
+        second.setCustomerId("C-2");
+        second.setProductCode("P-2");
+        second.setQuantity(2);
+        second.setUnitPrice(new BigDecimal("7.50"));
+        second.setTotalAmount(new BigDecimal("15.00"));
+        second.setStatus(OrderStatus.CREATED);
+
+        when(orderRepository.findAll()).thenReturn(List.of(first, second));
+
+        List<OrderResponse> responses = orderService.getAllOrders();
+
+        assertEquals(2, responses.size());
+
+        OrderResponse firstResponse = responses.get(0);
+        assertEquals(1L, firstResponse.orderId());
+        assertEquals("P-1", firstResponse.productCode());
+        assertEquals(1, firstResponse.quantity());
+        assertEquals(new BigDecimal("10.00"), firstResponse.unitPrice());
+        assertEquals(new BigDecimal("10.00"), firstResponse.totalAmount());
+        assertEquals("C-1", firstResponse.customerId());
+        assertEquals("CREATED", firstResponse.status());
+
+        OrderResponse secondResponse = responses.get(1);
+        assertEquals(2L, secondResponse.orderId());
+        assertEquals("P-2", secondResponse.productCode());
+        assertEquals(2, secondResponse.quantity());
+        assertEquals(new BigDecimal("7.50"), secondResponse.unitPrice());
+        assertEquals(new BigDecimal("15.00"), secondResponse.totalAmount());
+        assertEquals("C-2", secondResponse.customerId());
+        assertEquals("CREATED", secondResponse.status());
     }
 }
